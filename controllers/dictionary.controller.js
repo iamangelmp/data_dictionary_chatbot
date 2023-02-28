@@ -4,14 +4,8 @@ const checkMessage = async (req, res, next) => {
   const msg = req.body.msg;
   const dataArray = await proccessData(msg)
   //convertArray(msg)
-  const msjObj = {
-    msg,
-    question: [],
-    answare: [],
-    keyword: dataArray,
-    comments: []
-  }
-  res.json(msjObj)
+
+  res.json(dataArray)
 }
 
 const convertArray = async (msj) => {
@@ -21,21 +15,43 @@ const convertArray = async (msj) => {
 }
 
 const proccessData = async (msj) => {
-  let keys = []
+
+  let dataMsgObj = {
+    message: msj,
+    question: [],
+    answare: [],
+    keyword: [],
+    comments: []
+  }
 
   for (faq of keyword) {
     for (let i = 0; i <= faq.keywords.length; i++) {
-      
+
       if (msj.includes(faq.keywords[i])) {
-        keys.push(faq.keywords[i])
+        dataMsgObj.keyword.push(faq.keywords[i])
+        dataMsgObj.answare.push(faq.answare)
+        dataMsgObj.comments.push(faq.comments)
+        dataMsgObj.question.push(faq.question)
       }
 
     }
 
   }
 
+  
+  deleteDuplicatesfromMessage(dataMsgObj.answare);
+  return dataMsgObj
+}
 
-  return keys;
+const deleteDuplicatesfromMessage = (object)=>{
+  const answare = object.answare;
+
+  const question = object.filter((item,index)=>{
+    return object.indexOf(item) === index;
+  })
+
+  console.log(question)
+  return question
 }
 
 module.exports = checkMessage;
