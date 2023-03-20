@@ -1,48 +1,68 @@
-const keyword = require("../data/keywords.js");
+const dictionary = require("../models/nosql/dictionary.model.js");
 
 const checkMessage = async (req, res, next) => {
-  const msg = req.body.msg;
+  const msg = req.body.msg.trim(); //elimina espacios al inicio y fin
   const dataArray = await proccessData(msg);
+
+  // si la answare de dataArray es un mensaje de error, regresar un objeto JSON con estatus 500
+  if (typeof dataArray.answare == "string") {
+    return res.status(500).json({ error: dataArray });
+  }
 
   res.json(dataArray);
 };
 
 //covierte cadenas a arreglos
-const convertArray = async (msj) => {
-  const chain = String(msj).split(",");
-  console.log(chain);
-  return chain;
+const convertArray = (msj) => {
+  const dataParsed = [];
+  for (let chain of String(msj).split(",")) {
+    dataParsed.push(cleanString(chain));
+  }
+  return dataParsed;
+};
+
+const cleanString = (word) => {
+  return word.trim();
 };
 
 //El objeto que retorna la petición
 const proccessData = async (msj) => {
-  let dataMsgObj = {
-    message: msj,
-    question: [],
-    answare: [],
-    keyword: [],
-    comments: [],
-  };
+  try {
+    const keyword = await dictionary.find({});
+    let dataMsgObj = { question: [], answare: [], comments: [] };
 
-  for (faq of keyword) {
-    for (let i = 0; i <= faq.keywords.length; i++) {
-      if (msj.includes(faq.keywords[i])) {
-        dataMsgObj.keyword.push(faq.keywords[i]);
-        dataMsgObj.answare.push(faq.answare);
-        dataMsgObj.comments.push(faq.comments);
-        dataMsgObj.question.push(faq.question);
+    for (faq of keyword) {
+      const { question, answare, keywords, comments } = faq;
+
+      //itera sobre cada arreglo de palabras
+      for (word of keywords) {
+        if (msj.includes(word)) {
+          dataMsgObj.answare.push(answare);
+          dataMsgObj.comments.push(comments);
+          dataMsgObj.question.push(question);
+        }
       }
     }
+
+    return processAnsware(dataMsgObj);
+  } catch (error) {
+    return processAnsware({ error: error });
   }
-
-  //elimina respuestas, preguntas y comentarios duplicados
-  dataMsgObj.question = deleteDuplicates([...dataMsgObj.question]);
-  dataMsgObj.answare = deleteDuplicates([...dataMsgObj.answare]);
-  dataMsgObj.comments = deleteDuplicates([...dataMsgObj.comments]);
-
-  return dataMsgObj;
 };
 
+const processAnsware = (dataObj) => {
+  let msg = `No he podido entender tu requerimiento ☹️.En unos momentos uno de nuestros asesores te va a apoyar con tu requerimiento`;
+
+  //elimina respuestas, preguntas y comentarios duplicados
+  dataObj.question = deleteDuplicates([...dataObj.question]);
+  dataObj.comments = deleteDuplicates([...dataObj.comments]);
+
+  dataObj.answare.length == 0
+    ? (dataObj.answare = msg)
+    : (dataObj.answare = deleteDuplicates([...dataObj.answare]));
+
+  return dataObj;
+};
 
 const deleteDuplicates = (array_duplied) => {
   return array_duplied.filter((item, index) => {
@@ -50,4 +70,4 @@ const deleteDuplicates = (array_duplied) => {
   });
 };
 
-module.exports = checkMessage;
+module.exports = { checkMessage, convertArray, cleanString };
